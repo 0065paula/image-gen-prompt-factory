@@ -58,6 +58,7 @@ const App = () => {
   const [showHistory, setShowHistory] = useState(false); // 显示历史侧边栏
   const [selectedHistoryPrompt, setSelectedHistoryPrompt] = useState<string | null>(null); // 选中的历史提示词
   const [pendingSaveHistory, setPendingSaveHistory] = useState(false); // 等待保存历史的标志
+  const [elementTendency, setElementTendency] = useState(''); // 元素倾向（如：建筑内部）
   
   // 扩展的元数据
   const [titles, setTitles] = useState({
@@ -189,18 +190,27 @@ const App = () => {
     
     try {
       const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || "";
+      
+      if (!OPENROUTER_API_KEY) {
+        throw new Error("未配置 API 密钥。请在 .env 文件中设置 VITE_OPENROUTER_API_KEY");
+      }
+      
       const url = "https://openrouter.ai/api/v1/chat/completions";
 
       let promptText = "";
       
       if (inputMode === 'text') {
+        const tendencyGuidance = elementTendency 
+          ? `\n\nIMPORTANT - Visual Element Tendency: The user wants the visual metaphors and symbolic elements to be oriented towards "${elementTendency}". When generating visual descriptions and symbolic elements, prioritize using elements related to "${elementTendency}" to symbolize and metaphorically represent the content. For example, if the content is about communication, use "${elementTendency}" elements (like interior architectural features, rooms, corridors, etc.) to metaphorically represent communication concepts.`
+          : '';
+        
         promptText = `Act as an expert art director and content analyst.
 Task: Analyze the provided text below and extract structure for an isometric poster in **${mode === 'evolution' ? 'EVOLUTION' : 'BREAKDOWN'}** mode.
 
 Input Text:
 """
 ${sourceText}
-"""
+"""${tendencyGuidance}
 
 Output strictly valid JSON with this structure:
 {
@@ -219,9 +229,13 @@ Output strictly valid JSON with this structure:
 }
 Create exactly ${sectionCount} key sections. Prioritize the most important content. Return ONLY valid JSON, no markdown.`;
       } else {
+        const tendencyGuidance = elementTendency 
+          ? `\n\nIMPORTANT - Visual Element Tendency: The user wants the visual metaphors and symbolic elements to be oriented towards "${elementTendency}". When generating visual descriptions and symbolic elements, prioritize using elements related to "${elementTendency}" to symbolize and metaphorically represent the topic. For example, if the topic is about communication, use "${elementTendency}" elements (like interior architectural features, rooms, corridors, etc.) to metaphorically represent communication concepts.`
+          : '';
+        
         if (mode === 'evolution') {
           promptText = `Act as an expert art director and historian. Topic: "${topic}".
-Task: Break this topic down into an **evolution timeline** for an isometric poster.
+Task: Break this topic down into an **evolution timeline** for an isometric poster.${tendencyGuidance}
 Output strictly valid JSON:
 {
   "englishTitle": "Short Uppercase Title",
@@ -240,7 +254,7 @@ Output strictly valid JSON:
 Create exactly ${sectionCount} eras. Return ONLY valid JSON, no markdown.`;
         } else {
           promptText = `Act as an expert technical architect and art director. Topic: "${topic}".
-Task: Break this topic down into its **key structural components or functional layers** (Deconstruction/Anatomy) for an isometric poster.
+Task: Break this topic down into its **key structural components or functional layers** (Deconstruction/Anatomy) for an isometric poster.${tendencyGuidance}
 Output strictly valid JSON:
 {
   "englishTitle": "Short Uppercase Title",
@@ -282,14 +296,25 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
       });
 
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error?.message || `API Error: ${response.status}`);
+        const errorText = await response.text();
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText || `HTTP ${response.status}` };
+        }
+        throw new Error(errorData.error?.message || errorData.message || `API Error: ${response.status}`);
       }
 
       const data = await response.json();
+      console.log("Full API Response:", data);
+      
       const resultText = data.choices?.[0]?.message?.content;
       
-      if (!resultText) throw new Error("No content generated");
+      if (!resultText) {
+        console.error("No content in response:", data);
+        throw new Error(`No content generated. Response structure: ${JSON.stringify(data).substring(0, 200)}`);
+      }
 
       // 清理可能的 markdown 代码块和其他格式问题
       let cleanedText = resultText
@@ -304,9 +329,17 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
         cleanedText = jsonMatch[0];
       }
       
-      console.log("API Response:", cleanedText);
+      console.log("Cleaned Response Text:", cleanedText);
       
-      let responseJson = JSON.parse(cleanedText);
+      let responseJson;
+      try {
+        responseJson = JSON.parse(cleanedText);
+      } catch (parseError) {
+        console.error("JSON Parse Error:", parseError);
+        console.error("Failed to parse text:", cleanedText);
+        throw new Error(`JSON 解析失败: ${parseError instanceof Error ? parseError.message : '未知错误'}\n\n响应内容: ${cleanedText.substring(0, 500)}`);
+      }
+      
       console.log("Parsed JSON:", responseJson);
       
       // 如果返回的是数组，取第一个元素
@@ -348,7 +381,10 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
 
     } catch (error) {
       console.error("AI Generation failed:", error);
-      alert(`AI 生成失败: ${error instanceof Error ? error.message : '请重试或检查网络'}`);
+      const errorMessage = error instanceof Error 
+        ? error.message 
+        : '未知错误，请重试或检查网络连接';
+      alert(`AI 生成失败: ${errorMessage}\n\n提示：请检查浏览器控制台（F12）查看详细错误信息。`);
     } finally {
       setIsGenerating(false);
     }
@@ -404,7 +440,7 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
 
   useEffect(() => {
     generatePrompt();
-  }, [titles, sections, structure, aspectRatio, visualStyle, philosophicalMetaphor, mode]); 
+  }, [titles, sections, structure, aspectRatio, visualStyle, philosophicalMetaphor, mode, elementTendency]); 
 
   // 当 pendingSaveHistory 为 true 且有生成的提示词时，保存到历史
   useEffect(() => {
@@ -444,7 +480,15 @@ ${sectionPrefix} ${idx + 1}: ${sec.title} (${sec.label})
 ${sec.desc}
 Symbolic elements: ${sec.elements}`).join('\n');
 
-    const fullPrompt = `Create a highly detailed ${perspectiveTerm} illustration of ${titles.en.toLowerCase()} ${mode === 'evolution' ? 'history timeline' : 'structural anatomy'} in ${aspectRatio} aspect ratio at 4K resolution. This should be an intricate, symbolic, and metaphorical artwork with bilingual title, focusing on the ${mode === 'evolution' ? 'evolution' : 'composition'} of ${topic}.
+    const tendencyInstruction = elementTendency 
+      ? `\n\nVISUAL ELEMENT TENDENCY - CRITICAL GUIDANCE:
+The user has specified a visual element tendency: "${elementTendency}". 
+IMPORTANT: All visual metaphors, symbolic elements, and scene compositions should prioritize using elements related to "${elementTendency}" to symbolize and metaphorically represent the content. 
+For example, if "${elementTendency}" is "建筑内部" (building interior), then use interior architectural elements (rooms, corridors, windows, doors, interior structures, etc.) as the primary visual language to metaphorically represent all concepts and themes. 
+The entire scene should be framed within or composed using "${elementTendency}" elements as the dominant visual framework.`
+      : '';
+
+    const fullPrompt = `Create a highly detailed ${perspectiveTerm} illustration of ${titles.en.toLowerCase()} ${mode === 'evolution' ? 'history timeline' : 'structural anatomy'} in ${aspectRatio} aspect ratio at 4K resolution. This should be an intricate, symbolic, and metaphorical artwork with bilingual title, focusing on the ${mode === 'evolution' ? 'evolution' : 'composition'} of ${topic}.${tendencyInstruction}
 
 VISUAL STYLE - ${styleHeader}:
 ${styleDesc} Rich intricate architecture and environmental elements. Multiple layers of symbolic meaning and visual metaphors.
@@ -591,6 +635,23 @@ This design should showcase SYMBOLIC AND METAPHORICAL ART - with profound layere
             <div className="flex justify-between text-[10px] text-gray-400 mt-1">
               <span>1</span><span>6</span>
             </div>
+          </div>
+
+          {/* 元素倾向输入 */}
+          <div className="mb-3 px-1">
+            <div className="flex items-center gap-1 text-xs text-indigo-800 font-medium mb-1">
+              <Palette className="w-3 h-3"/> 元素倾向（可选）
+            </div>
+            <input 
+              type="text" 
+              value={elementTendency}
+              onChange={(e) => setElementTendency(e.target.value)}
+              className="w-full p-2 border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none text-xs shadow-sm"
+              placeholder="例如：建筑内部、自然景观、机械结构..."
+            />
+            <p className="text-[10px] text-indigo-400 mt-1 ml-1">
+              * 指定画面元素的倾向，AI将优先使用该元素来象征和隐喻内容
+            </p>
           </div>
 
           {inputMode === 'topic' ? (
