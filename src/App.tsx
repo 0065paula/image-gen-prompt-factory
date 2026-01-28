@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Layers, Map, Grid, Cpu, Sparkles, Loader2, Type, Palette, Monitor, Smartphone, Square, Box, PenTool, Brush, Brain, Terminal, History, Component, Wrench, Scissors, Package, Film, FileText, Search, Home, Hash, Zap, ChevronDown } from 'lucide-react'; 
+import { Copy, Cpu, Sparkles, Loader2, Type, Palette, Monitor, Smartphone, Square, Box, PenTool, Brush, Brain, History, Component, Wrench, Package, Film, FileText, Search, Home, Hash, Zap, ChevronDown } from 'lucide-react'; 
 
 // 类型定义
 type StructureType = 'layered' | 'map' | 'hex' | 'dollhouse'; 
@@ -122,13 +122,6 @@ const App = () => {
       icon: <PenTool className="w-4 h-4" />
     },
     { 
-      id: 'papercut', 
-      label: 'Layered Papercraft', 
-      header: 'LAYERED PAPERCUT ART',
-      desc: 'Depth-filled paper cutout art style. Multiple layers of colored paper creating shadows and depth. Organic shapes, tangible texture, soft lighting casting realistic shadows between layers. Craft and handmade aesthetic.',
-      icon: <Scissors className="w-4 h-4" />
-    },
-    { 
       id: 'watercolor', 
       label: 'Watercolor Drawing', 
       header: 'ARTISTIC WATERCOLOR ILLUSTRATION',
@@ -143,11 +136,11 @@ const App = () => {
       icon: <Box className="w-4 h-4" />
     },
     { 
-      id: 'terminal', 
-      label: 'Retro Terminal ASCII', 
-      header: 'RETRO TERMINAL ASCII ART STYLE',
-      desc: 'Minimalist monochromatic aesthetic resembling old CRT monitors. ASCII art style visuals with strong dithering effects, scanlines, and pixelated text textures. High contrast duo-tone palette (Phosphor Green or Amber on Black).',
-      icon: <Terminal className="w-4 h-4" />
+      id: 'dollhouse', 
+      label: 'Miniature Dollhouse', 
+      header: 'COZY MINIATURE DOLLHOUSE CROSS-SECTION',
+      desc: 'Warm, nostalgic dollhouse cross-section style showing multiple rooms with rich interior details. Miniature furniture, cozy lighting, pastel and earthy color palette. Each room tells a story with tiny decorative objects, plants, and lived-in details. Soft studio lighting, shallow depth of field, 3D rendered miniature aesthetic.',
+      icon: <Home className="w-4 h-4" />
     }
   ];
 
@@ -653,9 +646,8 @@ This design should showcase SYMBOLIC AND METAPHORICAL ART - with profound layere
                      opt.id === 'steampunk' ? '蒸汽朋克机械' :
                      opt.id === 'voxel' ? '3D体素艺术' :
                      opt.id === 'sketch' ? '蓝图建筑手绘' : 
-                     opt.id === 'papercut' ? '层叠剪纸艺术' :
                      opt.id === 'watercolor' ? '艺术感水彩' :
-                     opt.id === 'c4d' ? '3D可爱渲染' : '复古终端机'}
+                     opt.id === 'c4d' ? '3D可爱渲染' : '微缩娃娃屋'}
                   </div>
                 </div>
               </button>
