@@ -30,8 +30,8 @@ type ModelOption = {
 
 // 可用模型列表 (OpenRouter 模型 ID)
 const MODEL_OPTIONS: ModelOption[] = [
-  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.5 Flash Preview', provider: 'Google' },
-  { id: 'google/gemini-pro-1.5', name: 'Gemini 2.5 Pro', provider: 'Google' },
+  { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google' },
+  { id: 'google/gemini-2.5-pro-preview-03-25', name: 'Gemini 2.5 Pro', provider: 'Google' },
 ];
 
 const App = () => {
@@ -72,7 +72,7 @@ const App = () => {
     layered: "Museum/gallery structure with stacked interconnected wings representing different eras/sections ascending upwards.",
     map: "Winding path connecting different distinct zones in a continuous journey.",
     hex: "Interconnected hexagonal cells forming a hive of concepts, each cell representing a distinct component.",
-    dollhouse: "Flat 2D architectural cross-section view (dollhouse style). Side-view cutaway revealing internal rooms and layers. NOT isometric. Straight-on perspective like a Wes Anderson movie set." 
+    dollhouse: "STRICTLY 2D flat front-facing cross-section view (dollhouse cutaway style). Side-view revealing multiple rooms and internal layers. ABSOLUTELY NO isometric or 3D perspective. Pure straight-on 90-degree frontal view like a Wes Anderson movie set or architectural elevation drawing." 
   };
 
   // 比例选项
@@ -138,8 +138,8 @@ const App = () => {
     { 
       id: 'dollhouse', 
       label: 'Miniature Dollhouse', 
-      header: 'COZY MINIATURE DOLLHOUSE CROSS-SECTION',
-      desc: 'Warm, nostalgic dollhouse cross-section style showing multiple rooms with rich interior details. Miniature furniture, cozy lighting, pastel and earthy color palette. Each room tells a story with tiny decorative objects, plants, and lived-in details. Soft studio lighting, shallow depth of field, 3D rendered miniature aesthetic.',
+      header: 'COZY MINIATURE DOLLHOUSE AESTHETIC',
+      desc: 'Warm, nostalgic dollhouse aesthetic with rich interior details. Miniature furniture, cozy ambient lighting, pastel and earthy color palette. Each room tells a story with tiny decorative objects, potted plants, and lived-in details. Soft diffused studio lighting, rich material textures, handcrafted miniature model feel.',
       icon: <Home className="w-4 h-4" />
     }
   ];
@@ -272,8 +272,19 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
       
       if (!resultText) throw new Error("No content generated");
 
-      // 清理可能的 markdown 代码块
-      const cleanedText = resultText.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+      // 清理可能的 markdown 代码块和其他格式问题
+      let cleanedText = resultText
+        .replace(/```json\n?/g, '')
+        .replace(/```\n?/g, '')
+        .replace(/^\s*[\r\n]/gm, '') // 移除空行
+        .trim();
+      
+      // 尝试提取 JSON 对象（处理可能的前后多余文本）
+      const jsonMatch = cleanedText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        cleanedText = jsonMatch[0];
+      }
+      
       console.log("API Response:", cleanedText);
       
       let responseJson = JSON.parse(cleanedText);
@@ -335,7 +346,7 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
     const perspectiveTerm = isIsometric ? "isometric" : "flat architectural cross-section";
     const perspectiveDesc = isIsometric 
       ? "True isometric perspective (2:1 ratio) with precise angles." 
-      : "Flat front-facing 2D perspective (Wes Anderson style). Straight-on view, 90-degree angle, no isometric distortion.";
+      : "STRICTLY flat front-facing 2D elevation view. Pure straight-on 90-degree frontal perspective like architectural section drawings or Wes Anderson movie sets. ABSOLUTELY NO isometric angle, NO 3D perspective, NO tilted view. Camera perpendicular to the cross-section plane.";
     
     // 清洗风格中的 Isometric 关键词
     let styleHeader = currentStyle.header;
@@ -735,8 +746,8 @@ This design should showcase SYMBOLIC AND METAPHORICAL ART - with profound layere
             <h2 className="text-lg font-bold text-indigo-400">生成的自然语言提示词</h2>
           </div>
           
-          <div className="flex-1 bg-slate-800/80 p-6 rounded-xl border border-slate-700 shadow-2xl relative overflow-auto backdrop-blur-sm">
-            <pre className="font-mono text-xs leading-relaxed text-gray-300 whitespace-pre-wrap font-sans">
+          <div className="flex-1 bg-slate-800/80 p-6 rounded-xl border border-slate-700 shadow-2xl relative backdrop-blur-sm max-h-[70vh] overflow-y-auto">
+            <pre className="font-mono text-xs leading-relaxed text-gray-300 whitespace-pre-wrap font-sans pr-16">
               {generatedPrompt}
             </pre>
             
