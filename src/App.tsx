@@ -153,6 +153,13 @@ const App = () => {
       header: 'COZY MINIATURE DOLLHOUSE AESTHETIC',
       desc: 'Warm, nostalgic dollhouse aesthetic with rich interior details. Miniature furniture, cozy ambient lighting, pastel and earthy color palette. Each room tells a story with tiny decorative objects, potted plants, and lived-in details. Soft diffused studio lighting, rich material textures, handcrafted miniature model feel.',
       icon: <Home className="w-4 h-4" />
+    },
+    { 
+      id: 'riso_blueprint', 
+      label: 'Riso Tech Blueprint', 
+      header: 'MONOCHROMATIC RISO TECH BLUEPRINT',
+      desc: 'Monochromatic blue line art in risograph print style. High-saturation Klein blue or engineering blue linework on off-white paper texture background. Uniform line weight vector aesthetic like technical manuals or architectural blueprints. Graph paper grid texture with subtle creases and print noise. Clean geometric forms with minimal shading, volume expressed through line closure and simple fills. Vintage zine and risograph print imperfections.',
+      icon: <PenTool className="w-4 h-4" />
     }
   ];
 
@@ -727,7 +734,8 @@ This design should showcase SYMBOLIC AND METAPHORICAL ART - with profound layere
                      opt.id === 'voxel' ? '3D体素艺术' :
                      opt.id === 'sketch' ? '蓝图建筑手绘' : 
                      opt.id === 'watercolor' ? '艺术感水彩' :
-                     opt.id === 'c4d' ? '3D可爱渲染' : '微缩娃娃屋'}
+                     opt.id === 'c4d' ? '3D可爱渲染' : 
+                     opt.id === 'dollhouse' ? '微缩娃娃屋' : '蓝晒工程蓝图'}
                   </div>
                 </div>
               </button>
