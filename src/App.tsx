@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Copy, Cpu, Sparkles, Loader2, Type, Palette, Monitor, Smartphone, Square, Box, PenTool, Brush, Brain, History, Component, Wrench, Package, Film, FileText, Search, Home, Hash, Zap, ChevronDown } from 'lucide-react'; 
+import { Copy, Cpu, Sparkles, Loader2, Type, Palette, Monitor, Smartphone, Square, Box, PenTool, Brush, Brain, History, Component, Wrench, Package, Film, FileText, Search, Home, Hash, Zap, ChevronDown, Trash2, X, Clock } from 'lucide-react'; 
 
 // 类型定义
 type StructureType = 'layered' | 'map' | 'hex' | 'dollhouse'; 
@@ -28,6 +28,14 @@ type ModelOption = {
   provider: string;
 };
 
+type HistoryItem = {
+  id: string;
+  timestamp: number;
+  topic: string;
+  mode: PromptMode;
+  prompt: string;
+};
+
 // 可用模型列表 (OpenRouter 模型 ID)
 const MODEL_OPTIONS: ModelOption[] = [
   { id: 'google/gemini-2.0-flash-001', name: 'Gemini 2.0 Flash', provider: 'Google' },
@@ -46,6 +54,10 @@ const App = () => {
   const [sectionCount, setSectionCount] = useState(3); // 新增：分段数量控制
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedModel, setSelectedModel] = useState(MODEL_OPTIONS[0].id); // 模型选择
+  const [history, setHistory] = useState<HistoryItem[]>([]); // 历史记录
+  const [showHistory, setShowHistory] = useState(false); // 显示历史侧边栏
+  const [selectedHistoryPrompt, setSelectedHistoryPrompt] = useState<string | null>(null); // 选中的历史提示词
+  const [pendingSaveHistory, setPendingSaveHistory] = useState(false); // 等待保存历史的标志
   
   // 扩展的元数据
   const [titles, setTitles] = useState({
@@ -325,6 +337,7 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
       }));
 
       setSections(newSections);
+      setPendingSaveHistory(true); // 标记需要保存历史
 
     } catch (error) {
       console.error("AI Generation failed:", error);
@@ -334,9 +347,65 @@ Create exactly ${sectionCount} key sections. Return ONLY valid JSON, no markdown
     }
   };
 
+  // 从 localStorage 加载历史记录
+  useEffect(() => {
+    const savedHistory = localStorage.getItem('prompt-history');
+    if (savedHistory) {
+      try {
+        setHistory(JSON.parse(savedHistory));
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
+    }
+  }, []);
+
+  // 保存历史记录到 localStorage
+  const saveToHistory = (prompt: string) => {
+    const newItem: HistoryItem = {
+      id: Date.now().toString(),
+      timestamp: Date.now(),
+      topic: inputMode === 'topic' ? topic : sourceText.slice(0, 50) + '...',
+      mode: mode,
+      prompt: prompt
+    };
+    
+    setHistory(prev => {
+      const updated = [newItem, ...prev].slice(0, 20); // 最多保留20条
+      localStorage.setItem('prompt-history', JSON.stringify(updated));
+      return updated;
+    });
+  };
+
+  // 删除单条历史
+  const deleteHistoryItem = (id: string) => {
+    setHistory(prev => {
+      const updated = prev.filter(item => item.id !== id);
+      localStorage.setItem('prompt-history', JSON.stringify(updated));
+      return updated;
+    });
+    if (selectedHistoryPrompt) {
+      setSelectedHistoryPrompt(null);
+    }
+  };
+
+  // 清空所有历史
+  const clearAllHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('prompt-history');
+    setSelectedHistoryPrompt(null);
+  };
+
   useEffect(() => {
     generatePrompt();
   }, [titles, sections, structure, aspectRatio, visualStyle, philosophicalMetaphor, mode]); 
+
+  // 当 pendingSaveHistory 为 true 且有生成的提示词时，保存到历史
+  useEffect(() => {
+    if (pendingSaveHistory && generatedPrompt) {
+      saveToHistory(generatedPrompt);
+      setPendingSaveHistory(false);
+    }
+  }, [pendingSaveHistory, generatedPrompt]);
 
   const generatePrompt = () => {
     const currentStyle = styleOptions.find(s => s.id === visualStyle) || styleOptions[0];
@@ -407,7 +476,7 @@ This design should showcase SYMBOLIC AND METAPHORICAL ART - with profound layere
 
   const handleCopy = () => {
     const textArea = document.createElement("textarea");
-    textArea.value = generatedPrompt;
+    textArea.value = selectedHistoryPrompt || generatedPrompt;
     textArea.style.position = "fixed";
     textArea.style.left = "-9999px";
     document.body.appendChild(textArea);
@@ -741,15 +810,115 @@ This design should showcase SYMBOLIC AND METAPHORICAL ART - with profound layere
              }}>
         </div>
 
+        {/* 历史侧边栏 */}
+        {showHistory && (
+          <div className="absolute top-0 right-0 w-80 h-full bg-slate-800 border-l border-slate-700 z-30 flex flex-col shadow-2xl">
+            <div className="p-4 border-b border-slate-700 flex items-center justify-between">
+              <h3 className="text-sm font-bold text-indigo-400 flex items-center gap-2">
+                <Clock className="w-4 h-4" />
+                历史记录 ({history.length})
+              </h3>
+              <div className="flex items-center gap-2">
+                {history.length > 0 && (
+                  <button
+                    onClick={clearAllHistory}
+                    className="text-xs text-red-400 hover:text-red-300 flex items-center gap-1"
+                    title="清空所有历史"
+                  >
+                    <Trash2 className="w-3 h-3" />
+                    清空
+                  </button>
+                )}
+                <button
+                  onClick={() => {
+                    setShowHistory(false);
+                    setSelectedHistoryPrompt(null);
+                  }}
+                  className="text-gray-400 hover:text-white"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto">
+              {history.length === 0 ? (
+                <div className="p-4 text-center text-gray-500 text-sm">
+                  暂无历史记录
+                </div>
+              ) : (
+                history.map((item) => (
+                  <div 
+                    key={item.id}
+                    className={`p-3 border-b border-slate-700 cursor-pointer hover:bg-slate-700/50 transition-colors ${
+                      selectedHistoryPrompt === item.prompt ? 'bg-slate-700/70' : ''
+                    }`}
+                    onClick={() => setSelectedHistoryPrompt(item.prompt)}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs text-gray-400 mb-1">
+                          {new Date(item.timestamp).toLocaleString('zh-CN', {
+                            month: 'numeric',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </div>
+                        <div className="text-sm font-medium text-gray-200 truncate">
+                          {item.topic}
+                        </div>
+                        <div className="text-xs text-indigo-400 mt-1">
+                          {item.mode === 'evolution' ? '演化史' : '拆解万物'}
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteHistoryItem(item.id);
+                        }}
+                        className="text-gray-500 hover:text-red-400 p-1 flex-shrink-0"
+                        title="删除"
+                      >
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
         <div className="z-10 flex-1 flex flex-col max-w-3xl mx-auto w-full">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-bold text-indigo-400">生成的自然语言提示词</h2>
+            <button
+              onClick={() => {
+                setShowHistory(!showHistory);
+                if (!showHistory) setSelectedHistoryPrompt(null);
+              }}
+              className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+                showHistory 
+                  ? 'bg-indigo-600 text-white' 
+                  : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+              }`}
+            >
+              <History className="w-3 h-3" />
+              历史
+            </button>
           </div>
           
           <div className="flex-1 bg-slate-800/80 p-6 rounded-xl border border-slate-700 shadow-2xl relative backdrop-blur-sm max-h-[70vh] overflow-y-auto">
             <pre className="font-mono text-xs leading-relaxed text-gray-300 whitespace-pre-wrap font-sans pr-16">
-              {generatedPrompt}
+              {selectedHistoryPrompt || generatedPrompt}
             </pre>
+            
+            {selectedHistoryPrompt && (
+              <div className="absolute top-4 left-4 text-xs bg-amber-600 text-white px-2 py-1 rounded">
+                📜 历史记录
+              </div>
+            )}
             
             <button 
               onClick={handleCopy}
@@ -761,7 +930,7 @@ This design should showcase SYMBOLIC AND METAPHORICAL ART - with profound layere
           </div>
 
           <div className="mt-6 text-xs text-gray-500 flex gap-4 justify-center">
-             <p>💡 提示：新的“拆解万物”模式非常适合生成剖面图（Cross-sections）或系统架构图。</p>
+             <p>💡 提示：新的"拆解万物"模式非常适合生成剖面图（Cross-sections）或系统架构图。</p>
           </div>
         </div>
       </div>
